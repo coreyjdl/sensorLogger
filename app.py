@@ -23,7 +23,8 @@ def main():
         writer = csv.DictWriter(out_file, fieldnames=fields)
         writer.writeheader()
 
-        while(True):
+    while(True):
+        with open(filename, 'a') as out_file:
             incoming = ser.readline()
             out = {"timestamp": datetime.now(), **parse_data(incoming)}
             writer.writerow(out)
