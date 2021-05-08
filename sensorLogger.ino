@@ -92,6 +92,7 @@ void loop()
   root["ac_amps"] = AmpsRMS;
   
   serializeJson(root, Serial);
+  Serial.println();
   
   // reset value;
   sensorValue = 0;
