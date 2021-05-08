@@ -10,7 +10,10 @@ StaticJsonDocument<100> root;
 #define ONE_WIRE_BUS 7
 
 //use pin A0 for current sensor
-#define Pin A0
+#define CURRENT_PIN A0
+
+// use pin A1 for contact switch
+#define SWITCH_PIN 9
 
 // Setup a oneWire instance to communicate with any OneWire device
 OneWire oneWire(ONE_WIRE_BUS);  
@@ -29,7 +32,6 @@ float adjustedValue;
 float amps;
 
 //  AC variable for current sensor
-const int sensorIn = A0;
 int mVperAmp = 100; // use 100 for 20A Module and 66 for 30A Module
 
 double Voltage = 0;
@@ -42,10 +44,13 @@ void setup()
   Serial.begin(9600);
   deviceCount = sensors.getDeviceCount();
 
+  // simple on off switch input for open / close
+  pinMode(SWITCH_PIN, INPUT);
+
   // loop for current sensor, this sets assumed 0 current value;
   for (int i = 0; i < averageValue; i++)
   {
-    sensorValue += analogRead(Pin);
+    sensorValue += analogRead(CURRENT_PIN);
     delay(2);
   }
 
@@ -65,13 +70,12 @@ void loop()
   {
     String sensorNum = "tempC_" + String(i + 1);
     root[sensorNum] = sensors.getTempCByIndex(i);
-    //delay(2);
   } 
 
   // loop for current sensor
   for (int i = 0; i < averageValue; i++)
   {
-    sensorValue += analogRead(Pin);
+    sensorValue += analogRead(CURRENT_PIN);
     delay(2);
   }
 
@@ -85,18 +89,25 @@ void loop()
   amps = adjustedValue / 25.6;
   root["dc_amps"] = amps;
 
+  // reset sensor value;
+  sensorValue = 0;
+
+  // ac amps operations
   Voltage = getVPP();
   VRMS = (Voltage/2.0) *0.707;  //root 2 is 0.707
   AmpsRMS = (VRMS * 1000)/mVperAmp;
 
   root["ac_amps"] = AmpsRMS;
+
+  // switch breaks contact when door is opened
+  if (digitalRead(SWITCH_PIN) == HIGH) {
+    root["switch"] = "closed";
+  } else {
+    root["switch"] = "open";
+  }
   
   serializeJson(root, Serial);
   Serial.println();
-  
-  // reset value;
-  sensorValue = 0;
-  delay(1000);
 }
 
 float getVPP()
@@ -109,7 +120,7 @@ float getVPP()
    uint32_t start_time = millis();
    while((millis()-start_time) < 1000) //sample for 1 Sec
    {
-       readValue = analogRead(sensorIn);
+       readValue = analogRead(CURRENT_PIN);
        // see if you have a new maxValue
        if (readValue > maxValue) 
        {
